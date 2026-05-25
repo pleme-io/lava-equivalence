@@ -1,0 +1,25 @@
+[package]
+authors = ["pleme-io"]
+description = "Byte-equivalence harness for the lava suite. For each bundled architecture, render via lava-architectures + diff against a typed golden fixture. Regression-detects renderer changes and (once golden fixtures are generated from pangea) proves pangea ↔ lava byte-equivalence. One typed Fixture struct + assert_terraform_json_equivalent."
+edition = "2024"
+license = "MIT"
+name = "lava-equivalence"
+readme = "README.md"
+repository = "https://github.com/pleme-io/lava-equivalence"
+version = "0.1.0"
+
+[lib]
+name = "lava_equivalence"
+path = "src/lib.rs"
+
+[lints.clippy]
+pedantic = "warn"
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+indexmap = { version = "2", features = ["serde"] }
+thiserror = "2"
+lava-architectures = { git = "https://github.com/pleme-io/lava-architectures", branch = "main" }
+lava-eval = { git = "https://github.com/pleme-io/lava-eval", branch = "main" }
+lava-core = { git = "https://github.com/pleme-io/lava-core", branch = "main" }

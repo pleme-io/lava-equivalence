@@ -1,0 +1,51 @@
+{
+  "resource": {
+    "cloudflare_dns_record": {
+      "acme-challenge-txt": {
+        "comment": "ACME DNS-01 challenge",
+        "content": "placeholder-acme-token",
+        "name": "_acme-challenge",
+        "proxied": false,
+        "ttl": 1,
+        "type": "TXT",
+        "zone_id": "11112222333344445555666677778888"
+      },
+      "api-cname": {
+        "comment": "api proxied through Cloudflare",
+        "content": "origin.example.com",
+        "name": "api",
+        "proxied": true,
+        "ttl": 1,
+        "type": "CNAME",
+        "zone_id": "11112222333344445555666677778888"
+      },
+      "root-cname": {
+        "comment": "apex CNAME flattening",
+        "content": "example.com.cdn.cloudflare.net",
+        "name": "@",
+        "proxied": true,
+        "ttl": 1,
+        "type": "CNAME",
+        "zone_id": "11112222333344445555666677778888"
+      },
+      "wildcard-staging-cname": {
+        "comment": "wildcard for staging subdomains",
+        "content": "example.com",
+        "name": "*.staging",
+        "proxied": false,
+        "ttl": 1,
+        "type": "CNAME",
+        "zone_id": "11112222333344445555666677778888"
+      },
+      "www-cname": {
+        "comment": "www Ã¢ÂÂ apex",
+        "content": "example.com",
+        "name": "www",
+        "proxied": true,
+        "ttl": 1,
+        "type": "CNAME",
+        "zone_id": "11112222333344445555666677778888"
+      }
+    }
+  }
+}
