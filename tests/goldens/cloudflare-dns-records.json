@@ -38,7 +38,7 @@
         "zone_id": "11112222333344445555666677778888"
       },
       "www-cname": {
-        "comment": "www Ã¢ÂÂ apex",
+        "comment": "www → apex",
         "content": "example.com",
         "name": "www",
         "proxied": true,
