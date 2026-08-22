@@ -22,6 +22,7 @@
 
 #![allow(clippy::module_name_repetitions)]
 
+
 use indexmap::IndexMap;
 use lava_architectures::load_bundled;
 use lava_eval::InputBindings;
@@ -95,6 +96,13 @@ pub fn assert_terraform_json_equivalent(
 /// Recursive sort-keys normalizer. JSON objects become sorted-key
 /// objects so two semantically-equal inputs always serialize the same
 /// way under canonicalization.
+/// The canonical form goldens are written in — exposed so a generated golden
+/// and a live comparison can never disagree about what "same" means.
+#[must_use]
+pub fn normalize_public(v: &serde_json::Value) -> serde_json::Value {
+    normalize(v)
+}
+
 fn normalize(v: &serde_json::Value) -> serde_json::Value {
     match v {
         serde_json::Value::Object(map) => {
