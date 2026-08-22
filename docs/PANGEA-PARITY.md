@@ -19,8 +19,6 @@ Every committed oracle belongs to a private environment: its rendered JSON
 carries live cloud resource ids and operator CIDRs, which is why
 `pangea-architectures` is private. **This repo is public.**
 
-So the split is:
-
 | layer | repo | holds |
 |---|---|---|
 | comparison machinery | `lava-equivalence` (public) | generic; no environment data |
@@ -33,43 +31,74 @@ environment value in `aws-sg-ingress-rules.tlisp` is an `:input`.
 
 ## Measured 2026-08-22 — first real oracle
 
-One architecture (`aws-sg-ingress-rules`) was derived from a real workspace and
-rendered against that workspace's committed `.tf.json`. Result: **10 of 18 JSON
-paths identical**, zero lava-only paths. Every resource-level field that both
-sides emit — `type`, `protocol`, `cidr_blocks`, `security_group_id`,
-`description` — matched exactly.
+`aws-sg-ingress-rules` was derived from a real workspace and rendered against
+that workspace's committed `.tf.json`:
 
-The 8 that diverged are three distinct findings, each confirmed in source
-rather than inferred from the diff:
+**16 of 18 JSON paths identical. Zero differing values. Zero lava-only paths.**
 
-### 1. Every scalar renders as a JSON string
+The two misses are the output `description` field.
 
-`from_port` / `to_port` render `"22"` where Pangea renders `22`. lava has no
-numeric literal — bindings arrive through `set_str` and stay strings.
+## ★ The correction that matters more than the number
 
-Terraform tolerates both for ports, so this breaks *parity* without breaking
-*apply* — which is precisely why it needs a differential to find. A gap that
-still works is one no operator ever reports.
+The first pass of this measurement reported **three** lava gaps. **Two of them
+were the author not knowing the language**, and both looked exactly like real
+findings until the source was read:
 
-### 2. `:result` does not become a terraform `output` block
+- **"`:result` doesn't render outputs."** The architecture form has its own
+  `:outputs` clause (`lava-eval/src/eval.rs:152`, filled at `:237`). `:result`
+  is skipped *deliberately* — it is for downstream consumers composing the
+  architecture. The evidence that misled: all 30 bundled architectures declare
+  `:result`, and no golden had an `output` block. That is equally consistent
+  with "the wiring is missing" and with "nobody has used the other clause yet",
+  and the second was true.
+- **"lava can't emit numbers."** A bare `22` parses to `Atom::Int`
+  (`sexpr.rs:210`), evaluates to `Value::n` (`eval.rs:552`) and renders as JSON
+  `22`. The architecture had quoted them.
 
-`lava-core` supports outputs — `Architecture::render_terraform_json` emits an
-`output` block from `self.outputs` (`lava-core/src/lib.rs:493`), and a unit
-test pins it (`:628`). But **all 30 bundled architectures declare `:result`,
-and zero goldens contain an `output` block.** The `.tlisp` evaluator never
-populates `Architecture.outputs` from the `:result` form.
+The generalizable lesson: **a differential tells you two renderings differ; it
+never tells you why.** Every divergence needs the source read on both sides
+before it is written down as a gap, because a gap caused by the author's
+inexperience is indistinguishable from a gap in the tool — and the wrong
+version sends the next reader to fix code that already works.
 
-So this is a *wiring* gap between the Lisp surface and a core that already
-works, not a missing capability — and it is invisible from either side alone:
-lava-core's test passes, every architecture looks like it declares outputs, and
-the rendered JSON silently has none.
+## The two genuine limits
 
-### 3. Terraform output `description` is unrepresentable
+### 1. A number cannot arrive through an `:input`
 
-`render_terraform_json` inserts exactly one key per output, `value`. Pangea
-emits `value` and `description`. This one *is* a capability gap in lava-core,
-and it is the honest floor: 2 of the 4 missing paths cannot be produced today
-no matter how the architecture is written.
+`InputBindings` carries `set_str` and `set_list` and nothing else, so an
+interpolated `"{port}"` is always a string no matter what is bound. Literals
+are fine; parameters are not.
+
+Terraform accepts both and applies identically — so this breaks *parity*
+without breaking *anything an operator would notice*. That is precisely the
+class only a differential finds.
+
+### 2. Output `description` is unrepresentable
+
+`Architecture::render_terraform_json` inserts exactly one key per output,
+`value` (`lava-core/src/lib.rs:493`). Pangea emits `value` and `description`.
+
+**Left open deliberately.** A description is documentation; terraform applies
+identically without it. Closing it means changing `Architecture.outputs` from
+`IndexMap<String, Value>` to a typed pair across five crates (`lava-core`,
+`lava-eval`, `lava-arch`, `lava-runtime`, `lava-test`). That is the right
+change when something needs it — it is not worth doing for a cosmetic field
+while whole resource types are unmeasured.
+
+## Coverage — the number that actually gates retiring the Ruby
+
+Across the five committed oracles: **20 distinct resource/data types**, all AWS
+except one `random_password`.
+
+**Rendering is not the constraint.** lava emits any type an architecture names
+— `aws_security_group_rule` has no provider file and rendered byte-identically.
+The provider `.tlisp` files are *typed schemas*, auto-generated by `lava-forge`
+from upstream provider schemas, and the renderer never consults them.
+
+So the coverage gap is a **generation** question, not an authoring one: 11
+schema files exist in `lava-aws`, covering 6 of the 18 AWS types these oracles
+use. Extending that is a lava-forge run against the provider schema, not
+hand-writing twelve resource definitions.
 
 ## The setup property worth knowing before extending this
 
